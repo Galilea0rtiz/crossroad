@@ -3,12 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
   <title>Crossroads | The Human Graph</title>
+
   <link rel="stylesheet" href="style.css" />
   <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 </head>
+
 <body>
   <div class="app">
+
     <header class="topbar">
       <div>
         <p class="eyebrow">The Human Graph</p>
@@ -29,7 +33,11 @@
       />
     </section>
 
-    <section class="legend">
+    <main class="graph-area">
+      <svg id="graph"></svg>
+    </main>
+
+    <div class="legend">
       <span><i class="dot core"></i>Core</span>
       <span><i class="dot love"></i>Love</span>
       <span><i class="dot goals"></i>Goals</span>
@@ -37,11 +45,7 @@
       <span><i class="dot career"></i>Career</span>
       <span><i class="dot moving"></i>Moving</span>
       <span><i class="dot identity"></i>Identity</span>
-    </section>
-
-    <main class="graph-area">
-      <svg id="graph"></svg>
-    </main>
+    </div>
 
     <aside id="sidePanel" class="side-panel">
       <button id="closePanel" class="close-btn">×</button>
@@ -54,12 +58,14 @@
           <span>Stories</span>
           <strong id="panelStories">0</strong>
         </div>
+
         <div>
           <span>Avg. age</span>
           <strong id="panelAge">0</strong>
         </div>
+
         <div>
-          <span>Happiness after</span>
+          <span>Happiness</span>
           <strong id="panelHappiness">0/10</strong>
         </div>
       </div>
@@ -80,8 +86,9 @@
         <p class="eyebrow">About</p>
         <h2>About Crossroads</h2>
         <p>
-          Crossroads is an interactive map of human experiences. Each dot represents
-          a life event. Each connection shows how experiences can relate to one another.
+          Crossroads is an interactive map of human experiences.
+          Each dot represents a life event. Each connection shows how
+          experiences often relate to one another.
         </p>
       </div>
     </div>
@@ -89,14 +96,20 @@
     <div id="submitModal" class="modal hidden">
       <div class="modal-content">
         <button id="closeSubmit" class="close-btn">×</button>
+
         <p class="eyebrow">Add to the graph</p>
         <h2>Submit your experience</h2>
         <p class="modal-note">
-          This adds your experience as a new glowing dot and saves it in your browser.
+          Your story will be added as a new dot and saved in this browser.
         </p>
 
         <form id="submitForm" class="submit-form">
-          <input id="storyTitle" type="text" placeholder="Experience title, ex: Moved away" required />
+          <input
+            id="storyTitle"
+            type="text"
+            placeholder="Experience title, ex: Moved away"
+            required
+          />
 
           <select id="storyCategory" required>
             <option value="">Choose category</option>
@@ -108,14 +121,35 @@
             <option value="Identity">Identity</option>
           </select>
 
-          <input id="storyAge" type="number" min="13" max="100" placeholder="Your age" required />
-          <input id="storyHappiness" type="number" min="1" max="10" placeholder="Happiness after, 1-10" required />
-          <textarea id="storyDescription" placeholder="What happened?" required></textarea>
+          <input
+            id="storyAge"
+            type="number"
+            min="13"
+            max="100"
+            placeholder="Your age"
+            required
+          />
+
+          <input
+            id="storyHappiness"
+            type="number"
+            min="1"
+            max="10"
+            placeholder="Happiness after, 1-10"
+            required
+          />
+
+          <textarea
+            id="storyDescription"
+            placeholder="What happened?"
+            required
+          ></textarea>
 
           <button type="submit">Add experience</button>
         </form>
       </div>
     </div>
+
   </div>
 
   <script src="data/nodes.js"></script>
