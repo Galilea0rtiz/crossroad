@@ -518,3 +518,25 @@ body::before {
 .submit-form button:hover {
   background: #dedefd;
 }
+
+.modal {
+  z-index: 9999;
+}
+
+.modal-content {
+  position: relative;
+  z-index: 10000;
+  pointer-events: auto;
+}
+
+.submit-form input,
+.submit-form select,
+.submit-form textarea,
+.submit-form button {
+  pointer-events: auto;
+}
+
+#graph {
+  position: relative;
+  z-index: 1;
+}
