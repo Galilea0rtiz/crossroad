@@ -1,14 +1,15 @@
-// Crossroads app wiring
-// This file makes the UI work even if the backend is not ready yet.
-
-document.addEventListener("DOMContentLoaded", async () => {
-  initializeGraph();
-  initializeSearch();
+document.addEventListener("DOMContentLoaded", () => {
   initializeAboutModal();
   initializeSubmitForm();
+  initializeSearch();
 
-  // Load database stories after the page is already usable.
-  await loadSavedStories();
+  loadSavedStories()
+    .catch((error) => {
+      console.warn("Backend stories did not load. App still works:", error);
+    })
+    .finally(() => {
+      initializeGraph();
+    });
 });
 
 async function loadSavedStories() {
@@ -16,48 +17,21 @@ async function loadSavedStories() {
     const response = await fetch("/api/stories");
 
     if (!response.ok) {
-      console.warn("Stories API is not ready yet:", response.status);
-      return;
+      throw new Error("No backend found");
     }
 
     const savedStories = await response.json();
 
     savedStories.forEach((story) => {
-      const alreadyExists = nodes.some((node) => node.id === story.id);
-      if (alreadyExists) return;
-
-      nodes.push(story);
-      edges.push(createEdgeForStory(story));
+      addStoryToData(story);
     });
-
-    redrawGraph();
   } catch (error) {
-    console.warn("Could not load saved stories. Form will still work locally.", error);
+    const localStories = JSON.parse(localStorage.getItem("crossroadsStories")) || [];
+
+    localStories.forEach((story) => {
+      addStoryToData(story);
+    });
   }
-}
-
-function initializeSearch() {
-  const searchInput = document.getElementById("searchInput");
-  if (!searchInput) return;
-
-  searchInput.addEventListener("input", (event) => {
-    const searchTerm = event.target.value.toLowerCase().trim();
-
-    if (searchTerm === "") {
-      resetGraphHighlight();
-      return;
-    }
-
-    const matchedNode = nodes.find((node) =>
-      node.title.toLowerCase().includes(searchTerm) ||
-      node.category.toLowerCase().includes(searchTerm)
-    );
-
-    if (matchedNode) {
-      focusNode(matchedNode.id);
-      openPanel(matchedNode);
-    }
-  });
 }
 
 function initializeAboutModal() {
@@ -89,7 +63,7 @@ function initializeSubmitForm() {
   const submitForm = document.getElementById("submitForm");
 
   if (!submitBtn || !submitModal || !closeSubmit || !submitForm) {
-    console.error("Submit form elements are missing from index.html");
+    console.error("Submit form elements are missing.");
     return;
   }
 
@@ -110,19 +84,22 @@ function initializeSubmitForm() {
   submitForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const category = document.getElementById("storyCategory").value;
-
-    const newNode = {
+    const newStory = {
       id: "custom-" + Date.now(),
       title: document.getElementById("storyTitle").value.trim(),
-      category: category,
+      category: document.getElementById("storyCategory").value,
       stories: 1,
       avgAge: Number(document.getElementById("storyAge").value),
       happinessAfter: Number(document.getElementById("storyHappiness").value),
       description: document.getElementById("storyDescription").value.trim()
     };
 
-    let savedNode = newNode;
+    if (!newStory.title || !newStory.category || !newStory.description) {
+      alert("Please fill out the full form.");
+      return;
+    }
+
+    let savedStory = newStory;
 
     try {
       const response = await fetch("/api/stories", {
@@ -130,34 +107,81 @@ function initializeSubmitForm() {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(newNode)
+        body: JSON.stringify(newStory)
       });
 
       if (response.ok) {
-        savedNode = await response.json();
+        savedStory = await response.json();
       } else {
-        console.warn("Story was added locally, but not saved to database:", response.status);
+        throw new Error("Backend save failed");
       }
     } catch (error) {
-      console.warn("Story was added locally, but database is not connected yet.", error);
+      const localStories = JSON.parse(localStorage.getItem("crossroadsStories")) || [];
+      localStories.push(newStory);
+      localStorage.setItem("crossroadsStories", JSON.stringify(localStories));
     }
 
-    nodes.push(savedNode);
-    edges.push(createEdgeForStory(savedNode));
+    addStoryToData(savedStory);
 
-    submitModal.classList.add("hidden");
     submitForm.reset();
+    submitModal.classList.add("hidden");
 
-    redrawGraph();
-    openPanel(savedNode);
-    setTimeout(() => focusNode(savedNode.id), 500);
+    if (typeof redrawGraph === "function") {
+      redrawGraph();
+    }
+
+    if (typeof openPanel === "function") {
+      openPanel(savedStory);
+    }
+
+    if (typeof focusNode === "function") {
+      setTimeout(() => focusNode(savedStory.id), 500);
+    }
   });
 }
 
-function createEdgeForStory(story) {
-  return {
+function addStoryToData(story) {
+  const alreadyExists = nodes.some((node) => node.id === story.id);
+
+  if (alreadyExists) return;
+
+  nodes.push(story);
+
+  edges.push({
     source: story.category.toLowerCase(),
     target: story.id,
     strength: 0.7
-  };
+  });
+}
+
+function initializeSearch() {
+  const searchInput = document.getElementById("searchInput");
+
+  if (!searchInput) return;
+
+  searchInput.addEventListener("input", (event) => {
+    const searchTerm = event.target.value.toLowerCase().trim();
+
+    if (searchTerm === "") {
+      if (typeof resetGraphHighlight === "function") {
+        resetGraphHighlight();
+      }
+      return;
+    }
+
+    const matchedNode = nodes.find((node) =>
+      node.title.toLowerCase().includes(searchTerm) ||
+      node.category.toLowerCase().includes(searchTerm)
+    );
+
+    if (matchedNode) {
+      if (typeof focusNode === "function") {
+        focusNode(matchedNode.id);
+      }
+
+      if (typeof openPanel === "function") {
+        openPanel(matchedNode);
+      }
+    }
+  });
 }
