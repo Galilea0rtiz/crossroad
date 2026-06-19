@@ -1,37 +1,48 @@
+// Crossroads app wiring
+
 document.addEventListener("DOMContentLoaded", () => {
+  loadLocalStories();
+  initializeGraph();
+  initializeSearch();
   initializeAboutModal();
   initializeSubmitForm();
-  initializeSearch();
-
-  loadSavedStories()
-    .catch((error) => {
-      console.warn("Backend stories did not load. App still works:", error);
-    })
-    .finally(() => {
-      initializeGraph();
-    });
+  initializeSidePanel();
 });
 
-async function loadSavedStories() {
-  try {
-    const response = await fetch("/api/stories");
+function loadLocalStories() {
+  const savedStories = JSON.parse(localStorage.getItem("crossroadsStories") || "[]");
 
-    if (!response.ok) {
-      throw new Error("No backend found");
+  savedStories.forEach((story) => {
+    const alreadyExists = nodes.some((node) => node.id === story.id);
+    if (alreadyExists) return;
+
+    nodes.push(story);
+    edges.push(createEdgeForStory(story));
+  });
+}
+
+function initializeSearch() {
+  const searchInput = document.getElementById("searchInput");
+  if (!searchInput) return;
+
+  searchInput.addEventListener("input", (event) => {
+    const searchTerm = event.target.value.toLowerCase().trim();
+
+    if (searchTerm === "") {
+      resetGraphHighlight();
+      return;
     }
 
-    const savedStories = await response.json();
+    const matchedNode = nodes.find((node) =>
+      node.title.toLowerCase().includes(searchTerm) ||
+      node.category.toLowerCase().includes(searchTerm)
+    );
 
-    savedStories.forEach((story) => {
-      addStoryToData(story);
-    });
-  } catch (error) {
-    const localStories = JSON.parse(localStorage.getItem("crossroadsStories")) || [];
-
-    localStories.forEach((story) => {
-      addStoryToData(story);
-    });
-  }
+    if (matchedNode) {
+      focusNode(matchedNode.id);
+      openPanel(matchedNode);
+    }
+  });
 }
 
 function initializeAboutModal() {
@@ -81,10 +92,10 @@ function initializeSubmitForm() {
     }
   });
 
-  submitForm.addEventListener("submit", async (event) => {
+  submitForm.addEventListener("submit", (event) => {
     event.preventDefault();
 
-    const newStory = {
+    const newNode = {
       id: "custom-" + Date.now(),
       title: document.getElementById("storyTitle").value.trim(),
       category: document.getElementById("storyCategory").value,
@@ -94,97 +105,43 @@ function initializeSubmitForm() {
       description: document.getElementById("storyDescription").value.trim()
     };
 
-    if (!newStory.title || !newStory.category || !newStory.description) {
-      alert("Please fill out the full form.");
-      return;
-    }
+    const savedStories = JSON.parse(localStorage.getItem("crossroadsStories") || "[]");
+    savedStories.push(newNode);
+    localStorage.setItem("crossroadsStories", JSON.stringify(savedStories));
 
-    let savedStory = newStory;
+    nodes.push(newNode);
+    edges.push(createEdgeForStory(newNode));
 
-    try {
-      const response = await fetch("/api/stories", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(newStory)
-      });
-
-      if (response.ok) {
-        savedStory = await response.json();
-      } else {
-        throw new Error("Backend save failed");
-      }
-    } catch (error) {
-      const localStories = JSON.parse(localStorage.getItem("crossroadsStories")) || [];
-      localStories.push(newStory);
-      localStorage.setItem("crossroadsStories", JSON.stringify(localStories));
-    }
-
-    addStoryToData(savedStory);
-
-    submitForm.reset();
     submitModal.classList.add("hidden");
+    submitForm.reset();
 
-    if (typeof redrawGraph === "function") {
-      redrawGraph();
-    }
+    redrawGraph();
+    openPanel(newNode);
 
-    if (typeof openPanel === "function") {
-      openPanel(savedStory);
-    }
-
-    if (typeof focusNode === "function") {
-      setTimeout(() => focusNode(savedStory.id), 500);
-    }
+    setTimeout(() => {
+      focusNode(newNode.id);
+    }, 500);
   });
 }
 
-function addStoryToData(story) {
-  const alreadyExists = nodes.some((node) => node.id === story.id);
-
-  if (alreadyExists) return;
-
-  nodes.push(story);
-
-  edges.push({
+function createEdgeForStory(story) {
+  return {
     source: story.category.toLowerCase(),
     target: story.id,
     strength: 0.7
-  });
+  };
 }
 
-function initializeSearch() {
-  const searchInput = document.getElementById("searchInput");
+function initializeSidePanel() {
+  const closePanel = document.getElementById("closePanel");
 
-  if (!searchInput) return;
-
-  searchInput.addEventListener("input", (event) => {
-    const searchTerm = event.target.value.toLowerCase().trim();
-
-    if (searchTerm === "") {
-      if (typeof resetGraphHighlight === "function") {
-        resetGraphHighlight();
-      }
-      return;
-    }
-
-    const matchedNode = nodes.find((node) =>
-      node.title.toLowerCase().includes(searchTerm) ||
-      node.category.toLowerCase().includes(searchTerm)
-    );
-
-    if (matchedNode) {
-      if (typeof focusNode === "function") {
-        focusNode(matchedNode.id);
-      }
-
-      if (typeof openPanel === "function") {
-        openPanel(matchedNode);
-      }
-    }
-  });
+  if (closePanel) {
+    closePanel.addEventListener("click", () => {
+      document.getElementById("sidePanel").classList.remove("open");
+    });
+  }
 }
+
 function openPanel(node) {
   const sidePanel = document.getElementById("sidePanel");
   const panelCategory = document.getElementById("panelCategory");
@@ -195,30 +152,32 @@ function openPanel(node) {
   const panelDescription = document.getElementById("panelDescription");
   const relatedList = document.getElementById("relatedList");
 
+  if (!sidePanel) return;
+
   sidePanel.classList.add("open");
 
-  panelCategory.textContent = node.category;
-  panelTitle.textContent = node.title;
-  panelStories.textContent = node.stories;
-  panelAge.textContent = node.avgAge;
-  panelHappiness.textContent = node.happinessAfter + "/10";
-  panelDescription.textContent = node.description;
+  panelCategory.textContent = node.category || "Experience";
+  panelTitle.textContent = node.title || "Untitled";
+  panelStories.textContent = node.stories || 1;
+  panelAge.textContent = node.avgAge || "-";
+  panelHappiness.textContent = (node.happinessAfter || "-") + "/10";
+  panelDescription.textContent = node.description || "No description yet.";
 
   relatedList.innerHTML = "";
 
-  const relatedEdges = edges.filter(edge => {
+  const relatedEdges = edges.filter((edge) => {
     const source = typeof edge.source === "object" ? edge.source.id : edge.source;
     const target = typeof edge.target === "object" ? edge.target.id : edge.target;
 
     return source === node.id || target === node.id;
   });
 
-  relatedEdges.forEach(edge => {
+  relatedEdges.forEach((edge) => {
     const source = typeof edge.source === "object" ? edge.source.id : edge.source;
     const target = typeof edge.target === "object" ? edge.target.id : edge.target;
 
     const relatedId = source === node.id ? target : source;
-    const relatedNode = nodes.find(item => item.id === relatedId);
+    const relatedNode = nodes.find((item) => item.id === relatedId);
 
     if (!relatedNode) return;
 
@@ -233,7 +192,3 @@ function openPanel(node) {
     relatedList.appendChild(li);
   });
 }
-
-document.getElementById("closePanel").addEventListener("click", () => {
-  document.getElementById("sidePanel").classList.remove("open");
-});
