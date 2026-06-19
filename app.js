@@ -185,3 +185,55 @@ function initializeSearch() {
     }
   });
 }
+function openPanel(node) {
+  const sidePanel = document.getElementById("sidePanel");
+  const panelCategory = document.getElementById("panelCategory");
+  const panelTitle = document.getElementById("panelTitle");
+  const panelStories = document.getElementById("panelStories");
+  const panelAge = document.getElementById("panelAge");
+  const panelHappiness = document.getElementById("panelHappiness");
+  const panelDescription = document.getElementById("panelDescription");
+  const relatedList = document.getElementById("relatedList");
+
+  sidePanel.classList.add("open");
+
+  panelCategory.textContent = node.category;
+  panelTitle.textContent = node.title;
+  panelStories.textContent = node.stories;
+  panelAge.textContent = node.avgAge;
+  panelHappiness.textContent = node.happinessAfter + "/10";
+  panelDescription.textContent = node.description;
+
+  relatedList.innerHTML = "";
+
+  const relatedEdges = edges.filter(edge => {
+    const source = typeof edge.source === "object" ? edge.source.id : edge.source;
+    const target = typeof edge.target === "object" ? edge.target.id : edge.target;
+
+    return source === node.id || target === node.id;
+  });
+
+  relatedEdges.forEach(edge => {
+    const source = typeof edge.source === "object" ? edge.source.id : edge.source;
+    const target = typeof edge.target === "object" ? edge.target.id : edge.target;
+
+    const relatedId = source === node.id ? target : source;
+    const relatedNode = nodes.find(item => item.id === relatedId);
+
+    if (!relatedNode) return;
+
+    const li = document.createElement("li");
+    li.textContent = relatedNode.title;
+
+    li.addEventListener("click", () => {
+      openPanel(relatedNode);
+      focusNode(relatedNode.id);
+    });
+
+    relatedList.appendChild(li);
+  });
+}
+
+document.getElementById("closePanel").addEventListener("click", () => {
+  document.getElementById("sidePanel").classList.remove("open");
+});
