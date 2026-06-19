@@ -1,70 +1,24 @@
-// ==============================
-// APP STARTUP
-// ==============================
-
-document.addEventListener("DOMContentLoaded", () => {
-  loadSavedStories();
+document.addEventListener("DOMContentLoaded", async () => {
+  await loadSavedStories();
   initializeGraph();
   initializeSearch();
   initializeSubmitForm();
 });
 
-// ==============================
-// LOCAL STORAGE
-// This keeps new submissions saved in the visitor's browser.
-// ==============================
+async function loadSavedStories() {
+  const response = await fetch("/api/stories");
+  const savedStories = await response.json();
 
-const STORAGE_KEY = "crossroads-user-stories-v1";
+  savedStories.forEach((story) => {
+    nodes.push(story);
 
-function loadSavedStories() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return;
-
-  try {
-    const parsed = JSON.parse(saved);
-
-    if (!Array.isArray(parsed.nodes) || !Array.isArray(parsed.edges)) return;
-
-    parsed.nodes.forEach((savedNode) => {
-      const alreadyExists = nodes.some((node) => node.id === savedNode.id);
-      if (!alreadyExists) nodes.push(savedNode);
+    edges.push({
+      source: story.category.toLowerCase(),
+      target: story.id,
+      strength: 0.7
     });
-
-    parsed.edges.forEach((savedEdge) => {
-      const alreadyExists = edges.some((edge) =>
-        edge.source === savedEdge.source &&
-        edge.target === savedEdge.target
-      );
-
-      if (!alreadyExists) edges.push(savedEdge);
-    });
-  } catch (error) {
-    console.error("Could not load saved Crossroads stories:", error);
-  }
+  });
 }
-
-function saveUserStory(node, edge) {
-  const saved = localStorage.getItem(STORAGE_KEY);
-
-  let parsed = { nodes: [], edges: [] };
-
-  if (saved) {
-    try {
-      parsed = JSON.parse(saved);
-    } catch (error) {
-      parsed = { nodes: [], edges: [] };
-    }
-  }
-
-  parsed.nodes.push(node);
-  parsed.edges.push(edge);
-
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
-}
-
-// ==============================
-// SEARCH
-// ==============================
 
 function initializeSearch() {
   const searchInput = document.getElementById("searchInput");
@@ -89,10 +43,6 @@ function initializeSearch() {
   });
 }
 
-// ==============================
-// SUBMIT STORY
-// ==============================
-
 function initializeSubmitForm() {
   const submitBtn = document.getElementById("submitBtn");
   const submitModal = document.getElementById("submitModal");
@@ -113,48 +63,49 @@ function initializeSubmitForm() {
     }
   });
 
-  submitForm.addEventListener("submit", (event) => {
+  submitForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
-    const title = document.getElementById("storyTitle").value.trim();
     const category = document.getElementById("storyCategory").value;
-    const age = Number(document.getElementById("storyAge").value);
-    const happiness = Number(document.getElementById("storyHappiness").value);
-    const description = document.getElementById("storyDescription").value.trim();
-
-    if (!title || !category || !age || !happiness || !description) {
-      alert("Please fill out every field before adding your experience.");
-      return;
-    }
 
     const newNode = {
       id: "custom-" + Date.now(),
-      title,
-      category,
+      title: document.getElementById("storyTitle").value,
+      category: category,
       stories: 1,
-      avgAge: age,
-      happinessAfter: happiness,
-      description
+      avgAge: Number(document.getElementById("storyAge").value),
+      happinessAfter: Number(document.getElementById("storyHappiness").value),
+      description: document.getElementById("storyDescription").value
     };
 
-    const newEdge = {
-      source: category.toLowerCase(),
-      target: newNode.id,
+    const response = await fetch("/api/stories", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(newNode)
+    });
+
+    if (!response.ok) {
+      alert("Story could not be saved.");
+      return;
+    }
+
+    const savedNode = await response.json();
+
+    nodes.push(savedNode);
+
+    edges.push({
+      source: savedNode.category.toLowerCase(),
+      target: savedNode.id,
       strength: 0.7
-    };
-
-    nodes.push(newNode);
-    edges.push(newEdge);
-    saveUserStory(newNode, newEdge);
+    });
 
     submitModal.classList.add("hidden");
     submitForm.reset();
 
     redrawGraph();
-
-    setTimeout(() => {
-      openPanel(newNode);
-      focusNode(newNode.id);
-    }, 650);
+    openPanel(savedNode);
+    setTimeout(() => focusNode(savedNode.id), 500);
   });
 }
