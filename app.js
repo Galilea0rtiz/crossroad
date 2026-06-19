@@ -1,27 +1,44 @@
+// Crossroads app wiring
+// This file makes the UI work even if the backend is not ready yet.
+
 document.addEventListener("DOMContentLoaded", async () => {
-  await loadSavedStories();
   initializeGraph();
   initializeSearch();
+  initializeAboutModal();
   initializeSubmitForm();
+
+  // Load database stories after the page is already usable.
+  await loadSavedStories();
 });
 
 async function loadSavedStories() {
-  const response = await fetch("/api/stories");
-  const savedStories = await response.json();
+  try {
+    const response = await fetch("/api/stories");
 
-  savedStories.forEach((story) => {
-    nodes.push(story);
+    if (!response.ok) {
+      console.warn("Stories API is not ready yet:", response.status);
+      return;
+    }
 
-    edges.push({
-      source: story.category.toLowerCase(),
-      target: story.id,
-      strength: 0.7
+    const savedStories = await response.json();
+
+    savedStories.forEach((story) => {
+      const alreadyExists = nodes.some((node) => node.id === story.id);
+      if (alreadyExists) return;
+
+      nodes.push(story);
+      edges.push(createEdgeForStory(story));
     });
-  });
+
+    redrawGraph();
+  } catch (error) {
+    console.warn("Could not load saved stories. Form will still work locally.", error);
+  }
 }
 
 function initializeSearch() {
   const searchInput = document.getElementById("searchInput");
+  if (!searchInput) return;
 
   searchInput.addEventListener("input", (event) => {
     const searchTerm = event.target.value.toLowerCase().trim();
@@ -43,11 +60,38 @@ function initializeSearch() {
   });
 }
 
+function initializeAboutModal() {
+  const aboutBtn = document.getElementById("aboutBtn");
+  const aboutModal = document.getElementById("aboutModal");
+  const closeAbout = document.getElementById("closeAbout");
+
+  if (!aboutBtn || !aboutModal || !closeAbout) return;
+
+  aboutBtn.addEventListener("click", () => {
+    aboutModal.classList.remove("hidden");
+  });
+
+  closeAbout.addEventListener("click", () => {
+    aboutModal.classList.add("hidden");
+  });
+
+  aboutModal.addEventListener("click", (event) => {
+    if (event.target === aboutModal) {
+      aboutModal.classList.add("hidden");
+    }
+  });
+}
+
 function initializeSubmitForm() {
   const submitBtn = document.getElementById("submitBtn");
   const submitModal = document.getElementById("submitModal");
   const closeSubmit = document.getElementById("closeSubmit");
   const submitForm = document.getElementById("submitForm");
+
+  if (!submitBtn || !submitModal || !closeSubmit || !submitForm) {
+    console.error("Submit form elements are missing from index.html");
+    return;
+  }
 
   submitBtn.addEventListener("click", () => {
     submitModal.classList.remove("hidden");
@@ -70,36 +114,36 @@ function initializeSubmitForm() {
 
     const newNode = {
       id: "custom-" + Date.now(),
-      title: document.getElementById("storyTitle").value,
+      title: document.getElementById("storyTitle").value.trim(),
       category: category,
       stories: 1,
       avgAge: Number(document.getElementById("storyAge").value),
       happinessAfter: Number(document.getElementById("storyHappiness").value),
-      description: document.getElementById("storyDescription").value
+      description: document.getElementById("storyDescription").value.trim()
     };
 
-    const response = await fetch("/api/stories", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(newNode)
-    });
+    let savedNode = newNode;
 
-    if (!response.ok) {
-      alert("Story could not be saved.");
-      return;
+    try {
+      const response = await fetch("/api/stories", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(newNode)
+      });
+
+      if (response.ok) {
+        savedNode = await response.json();
+      } else {
+        console.warn("Story was added locally, but not saved to database:", response.status);
+      }
+    } catch (error) {
+      console.warn("Story was added locally, but database is not connected yet.", error);
     }
 
-    const savedNode = await response.json();
-
     nodes.push(savedNode);
-
-    edges.push({
-      source: savedNode.category.toLowerCase(),
-      target: savedNode.id,
-      strength: 0.7
-    });
+    edges.push(createEdgeForStory(savedNode));
 
     submitModal.classList.add("hidden");
     submitForm.reset();
@@ -108,4 +152,12 @@ function initializeSubmitForm() {
     openPanel(savedNode);
     setTimeout(() => focusNode(savedNode.id), 500);
   });
+}
+
+function createEdgeForStory(story) {
+  return {
+    source: story.category.toLowerCase(),
+    target: story.id,
+    strength: 0.7
+  };
 }
