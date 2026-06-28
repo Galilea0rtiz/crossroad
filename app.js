@@ -32,11 +32,11 @@ function initializeSearch() {
     );
 
     if (matchedNode) {
+      openPanel(matchedNode);
+
       if (typeof focusNode === "function") {
         focusNode(matchedNode.id);
       }
-
-      openPanel(matchedNode);
     }
   });
 }
@@ -94,6 +94,11 @@ function initializeSubmitForm() {
     const happiness = Number(document.getElementById("storyHappiness").value);
     const description = document.getElementById("storyDescription").value.trim();
 
+    if (!title || !category || !age || !happiness || !description) {
+      alert("Please fill out every field.");
+      return;
+    }
+
     const newNode = {
       id: "custom-" + Date.now(),
       title: title,
@@ -104,8 +109,6 @@ function initializeSubmitForm() {
       description: description
     };
 
-    console.log("New story submitted:", newNode);
-
     nodes.push(newNode);
 
     edges.push({
@@ -114,20 +117,22 @@ function initializeSubmitForm() {
       strength: 0.7
     });
 
+    console.log("New story submitted:", newNode);
+
     submitModal.classList.add("hidden");
     submitForm.reset();
 
     if (typeof redrawGraph === "function") {
-  redrawGraph();
-} else {
-  console.error("redrawGraph function does not exist.");
-}
-
-    openPanel(newNode);
-
-    if (typeof focusNode === "function") {
-      focusNode(newNode.id);
+      redrawGraph();
     }
+
+    setTimeout(() => {
+      openPanel(newNode);
+
+      if (typeof focusNode === "function") {
+        focusNode(newNode.id);
+      }
+    }, 500);
   });
 }
 
@@ -146,7 +151,7 @@ function openPanel(node) {
   const sidePanel = document.getElementById("sidePanel");
   const relatedList = document.getElementById("relatedList");
 
-  if (!sidePanel) return;
+  if (!sidePanel || !node) return;
 
   sidePanel.classList.add("open");
 
