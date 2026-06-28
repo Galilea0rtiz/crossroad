@@ -1,9 +1,14 @@
 document.addEventListener("DOMContentLoaded", () => {
-  initializeGraph();
-  initializeSearch();
   initializeAboutModal();
   initializeSubmitForm();
   initializeSidePanel();
+  initializeSearch();
+
+  try {
+    initializeGraph();
+  } catch (error) {
+    console.error("Graph failed to load:", error);
+  }
 });
 
 function initializeSearch() {
