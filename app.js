@@ -104,6 +104,8 @@ function initializeSubmitForm() {
       description: description
     };
 
+    console.log("New story submitted:", newNode);
+
     nodes.push(newNode);
 
     edges.push({
@@ -116,8 +118,10 @@ function initializeSubmitForm() {
     submitForm.reset();
 
     if (typeof redrawGraph === "function") {
-      redrawGraph();
-    }
+  redrawGraph();
+} else {
+  console.error("redrawGraph function does not exist.");
+}
 
     openPanel(newNode);
 
