@@ -159,6 +159,7 @@ function initializeGraph() {
   });
 
   // Resize support
+  window.removeEventListener("resize", resizeGraph);
   window.addEventListener("resize", resizeGraph);
 }
 
@@ -332,6 +333,18 @@ function resizeGraph() {
 // REDRAW GRAPH AFTER NEW INPUT
 // ==============================
 function redrawGraph() {
+  if (simulation) {
+    simulation.stop();
+  }
+
   d3.select("#graph").selectAll("*").remove();
+
+  svg = null;
+  graphGroup = null;
+  linkElements = null;
+  nodeElements = null;
+  labelElements = null;
+  simulation = null;
+
   initializeGraph();
 }
