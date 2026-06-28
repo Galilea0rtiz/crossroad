@@ -28,6 +28,11 @@ const categoryColors = {
 function initializeGraph() {
   svg = d3.select("#graph");
 
+  if (svg.empty()) {
+    console.error("SVG with id='graph' was not found.");
+    return;
+  }
+
   const width = window.innerWidth;
   const height = window.innerHeight;
 
@@ -158,7 +163,6 @@ function initializeGraph() {
       .attr("y", d => d.y + getNodeRadius(d) + 18);
   });
 
-  // Resize support
   window.removeEventListener("resize", resizeGraph);
   window.addEventListener("resize", resizeGraph);
 }
@@ -172,7 +176,7 @@ function getNodeRadius(node) {
     return 24;
   }
 
-  return Math.max(8, Math.min(22, node.stories / 35));
+  return Math.max(10, Math.min(24, 8 + node.stories / 45));
 }
 
 // ==============================
@@ -183,12 +187,15 @@ function getConnectedNodeIds(nodeId) {
   const connected = new Set([nodeId]);
 
   edges.forEach(edge => {
-    if (edge.source === nodeId) {
-      connected.add(edge.target);
+    const sourceId = typeof edge.source === "object" ? edge.source.id : edge.source;
+    const targetId = typeof edge.target === "object" ? edge.target.id : edge.target;
+
+    if (sourceId === nodeId) {
+      connected.add(targetId);
     }
 
-    if (edge.target === nodeId) {
-      connected.add(edge.source);
+    if (targetId === nodeId) {
+      connected.add(sourceId);
     }
   });
 
@@ -196,6 +203,8 @@ function getConnectedNodeIds(nodeId) {
 }
 
 function highlightNeighborhood(nodeId) {
+  if (!nodeElements || !linkElements || !labelElements) return;
+
   const connectedIds = getConnectedNodeIds(nodeId);
 
   nodeElements
@@ -254,21 +263,25 @@ function resetGraphHighlight() {
 // ==============================
 
 function focusNode(nodeId) {
-  if (!nodeElements || !zoomBehavior) return;
+  if (!nodeElements || !zoomBehavior || !svg) return;
 
   const selectedNode = nodeElements
     .data()
     .find(node => node.id === nodeId);
 
-  if (!selectedNode) return;
+  if (!selectedNode || selectedNode.x === undefined || selectedNode.y === undefined) {
+    return;
+  }
 
   const width = window.innerWidth;
   const height = window.innerHeight;
-
   const scale = 1.35;
 
   const transform = d3.zoomIdentity
-    .translate(width / 2 - selectedNode.x * scale - 180, height / 2 - selectedNode.y * scale)
+    .translate(
+      width / 2 - selectedNode.x * scale - 180,
+      height / 2 - selectedNode.y * scale
+    )
     .scale(scale);
 
   svg
@@ -319,6 +332,8 @@ function drag(simulation) {
 // ==============================
 
 function resizeGraph() {
+  if (!svg || !simulation) return;
+
   const width = window.innerWidth;
   const height = window.innerHeight;
 
@@ -329,9 +344,11 @@ function resizeGraph() {
     .alpha(0.4)
     .restart();
 }
+
 // ==============================
 // REDRAW GRAPH AFTER NEW INPUT
 // ==============================
+
 function redrawGraph() {
   if (simulation) {
     simulation.stop();
@@ -345,6 +362,7 @@ function redrawGraph() {
   nodeElements = null;
   labelElements = null;
   simulation = null;
+  zoomBehavior = null;
 
   initializeGraph();
 }
