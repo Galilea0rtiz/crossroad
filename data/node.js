@@ -107,7 +107,7 @@ const nodes = [
     stories: 1340,
     avgAge: 25,
     happinessAfter: 6.9,
-    description: "Hard seasons that shaped peopleâ€™s resilience and perspective."
+    description: "Hard seasons that shaped people's resilience and perspective."
   },
   {
     id: "burnout",
