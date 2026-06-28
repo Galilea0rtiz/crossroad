@@ -14,11 +14,15 @@ document.addEventListener("DOMContentLoaded", () => {
 function initializeSearch() {
   const searchInput = document.getElementById("searchInput");
 
+  if (!searchInput) return;
+
   searchInput.addEventListener("input", (event) => {
     const searchTerm = event.target.value.toLowerCase().trim();
 
     if (searchTerm === "") {
-      resetGraphHighlight();
+      if (typeof resetGraphHighlight === "function") {
+        resetGraphHighlight();
+      }
       return;
     }
 
@@ -28,7 +32,10 @@ function initializeSearch() {
     );
 
     if (matchedNode) {
-      focusNode(matchedNode.id);
+      if (typeof focusNode === "function") {
+        focusNode(matchedNode.id);
+      }
+
       openPanel(matchedNode);
     }
   });
@@ -39,12 +46,20 @@ function initializeAboutModal() {
   const aboutModal = document.getElementById("aboutModal");
   const closeAbout = document.getElementById("closeAbout");
 
+  if (!aboutBtn || !aboutModal || !closeAbout) return;
+
   aboutBtn.addEventListener("click", () => {
     aboutModal.classList.remove("hidden");
   });
 
   closeAbout.addEventListener("click", () => {
     aboutModal.classList.add("hidden");
+  });
+
+  aboutModal.addEventListener("click", (event) => {
+    if (event.target === aboutModal) {
+      aboutModal.classList.add("hidden");
+    }
   });
 }
 
@@ -54,6 +69,8 @@ function initializeSubmitForm() {
   const closeSubmit = document.getElementById("closeSubmit");
   const submitForm = document.getElementById("submitForm");
 
+  if (!submitBtn || !submitModal || !closeSubmit || !submitForm) return;
+
   submitBtn.addEventListener("click", () => {
     submitModal.classList.remove("hidden");
   });
@@ -62,19 +79,29 @@ function initializeSubmitForm() {
     submitModal.classList.add("hidden");
   });
 
+  submitModal.addEventListener("click", (event) => {
+    if (event.target === submitModal) {
+      submitModal.classList.add("hidden");
+    }
+  });
+
   submitForm.addEventListener("submit", (event) => {
     event.preventDefault();
 
+    const title = document.getElementById("storyTitle").value.trim();
     const category = document.getElementById("storyCategory").value;
+    const age = Number(document.getElementById("storyAge").value);
+    const happiness = Number(document.getElementById("storyHappiness").value);
+    const description = document.getElementById("storyDescription").value.trim();
 
     const newNode = {
       id: "custom-" + Date.now(),
-      title: document.getElementById("storyTitle").value.trim(),
+      title: title,
       category: category,
       stories: 1,
-      avgAge: Number(document.getElementById("storyAge").value),
-      happinessAfter: Number(document.getElementById("storyHappiness").value),
-      description: document.getElementById("storyDescription").value.trim()
+      avgAge: age,
+      happinessAfter: happiness,
+      description: description
     };
 
     nodes.push(newNode);
@@ -88,30 +115,45 @@ function initializeSubmitForm() {
     submitModal.classList.add("hidden");
     submitForm.reset();
 
-    redrawGraph();
+    if (typeof redrawGraph === "function") {
+      redrawGraph();
+    }
+
     openPanel(newNode);
-    focusNode(newNode.id);
+
+    if (typeof focusNode === "function") {
+      focusNode(newNode.id);
+    }
   });
 }
 
 function initializeSidePanel() {
   const closePanel = document.getElementById("closePanel");
+  const sidePanel = document.getElementById("sidePanel");
+
+  if (!closePanel || !sidePanel) return;
 
   closePanel.addEventListener("click", () => {
-    document.getElementById("sidePanel").classList.remove("open");
+    sidePanel.classList.remove("open");
   });
 }
 
 function openPanel(node) {
-  document.getElementById("sidePanel").classList.add("open");
-
-  document.getElementById("panelCategory").textContent = node.category;
-  document.getElementById("panelTitle").textContent = node.title;
-  document.getElementById("panelStories").textContent = node.stories;
-  document.getElementById("panelAge").textContent = node.avgAge;
-  document.getElementById("panelHappiness").textContent = node.happinessAfter + "/10";
-  document.getElementById("panelDescription").textContent = node.description;
-
+  const sidePanel = document.getElementById("sidePanel");
   const relatedList = document.getElementById("relatedList");
-  relatedList.innerHTML = "";
+
+  if (!sidePanel) return;
+
+  sidePanel.classList.add("open");
+
+  document.getElementById("panelCategory").textContent = node.category || "";
+  document.getElementById("panelTitle").textContent = node.title || "";
+  document.getElementById("panelStories").textContent = node.stories || 0;
+  document.getElementById("panelAge").textContent = node.avgAge || 0;
+  document.getElementById("panelHappiness").textContent = (node.happinessAfter || 0) + "/10";
+  document.getElementById("panelDescription").textContent = node.description || "";
+
+  if (relatedList) {
+    relatedList.innerHTML = "";
+  }
 }
